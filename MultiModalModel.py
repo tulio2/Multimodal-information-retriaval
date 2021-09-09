@@ -33,11 +33,11 @@ class Conv_emb(nn.Module):
     out = self.relu(self.bn(self.conv(x)))
     return out
 ###################### Model ###############################
-###################### Global Modelo ###############################
+###################### Global Modelo Arquitecture I ###############################
 
-class GlobalModel(nn.Module):
+class GlobalModel_I(nn.Module):
   def __init__(self,ind=[True,True,True,True]):
-    super(GlobalModel, self).__init__()
+    super(GlobalModel_I, self).__init__()
     self.indicador=ind
     #### You indicate the modes to consider
     if self.indicador[0]:
@@ -171,3 +171,128 @@ class GlobalModel(nn.Module):
     tag_emb = self.word_to_embedding(tag)
     song_emb = self.song_to_embedding(spec, cf,cover,ind_numeric)
     return tag_emb, song_emb
+
+###################### Global Modelo Arquitecture II ###############################
+
+class GlobalModel_II(nn.Module):
+  def __init__(self,ind=[True,True,True,True]):
+    super(GlobalModel_II, self).__init__()
+    self.indicador=ind
+    if self.indicador[0]:
+    # FC module for word embedding
+       self.fc1 = nn.Linear(300, 512)
+       self.bn1 = nn.BatchNorm1d(512)
+       self.fc2 = nn.Linear(512, 200)
+
+     
+    if self.indicador[1]:
+      # FC module for collaborative filtering embedding
+      self.cf_fc1 = nn.Linear(200, 512)
+      self.cf_bn1 = nn.BatchNorm1d(512)
+      self.cf_fc2 = nn.Linear(512, 200)
+    if self.indicador[2]:
+      # edit module for cover embedding
+      self.edit_fc1 = nn.Linear(2048, 1024)
+      self.edit_bn1 = nn.BatchNorm1d(1024)
+      self.edit_fc2 = nn.Linear(1024, 512)
+      self.edit_bn2 = nn.BatchNorm1d(512)
+      self.edit_fc3 = nn.Linear(512, 200)
+    if self.indicador[3]:
+      # acuoustic numeric module
+      self.numeric_fc1=nn.Linear(52,100)
+      self.numeric_bn1=nn.BatchNorm1d(100)
+      self.numeric_fc2=nn.Linear(100,200)
+    
+    # FC module for concatenated embedding
+    input_shape=sum(ind)*200
+    self.cat_fc1 = nn.Linear(input_shape, 512)
+    self.cat_bn1 = nn.BatchNorm1d(512)
+    self.cat_fc2 = nn.Linear(512, 256)
+
+    
+     # CNN module for spectrograms
+    self.audio_fc1 = nn.Linear(256, 512)
+    self.audio_bn1 = nn.BatchNorm1d(512)
+    self.audio_fc2 = nn.Linear(512, 256)
+    #For all
+    self.relu = nn.ReLU()
+    self.dropout = nn.Dropout(0.5)
+
+  def anchor_to_embedding(self, anchor):
+    out = self.audio_fc1(anchor)
+    out = self.audio_bn1(out)
+    out = self.relu(out)
+    out = self.dropout(out)
+    out = self.audio_fc2(out)
+    return out
+
+  def cf_to_embedding(self, cf):
+    out = self.cf_fc1(cf)
+    out = self.cf_bn1(out)
+    out = self.relu(out)
+    out = self.dropout(out)
+    out = self.cf_fc2(out)
+    return out
+  def cover_to_embedding(self, cover):
+    out = self.edit_fc1(cover)
+    out = self.edit_bn1(out)
+    out = self.relu(out)
+    out = self.dropout(out)
+    out = self.edit_fc2(out)
+    out = self.edit_bn2(out)
+    out = self.relu(out)
+    out = self.dropout(out)
+    out = self.edit_fc3(out)
+    return out
+  def numeric_to_embedding(self, ind_numeric):
+    out = self.numeric_fc1(ind_numeric)
+    out = self.numeric_bn1(out)
+    out = self.relu(out)
+    out = self.dropout(out)
+    out = self.numeric_fc2(out)
+    return out
+
+  def word_to_embedding(self, emb):
+    out = self.fc1(emb)
+    out = self.bn1(out)
+    out = self.relu(out)
+    out = self.dropout(out)
+    out = self.fc2(out)
+    return out
+  
+  def cat_to_embedding(self, cat):
+   
+    out = self.cat_fc1(cat)
+    out = self.cat_bn1(out)
+    out = self.relu(out)
+    out = self.dropout(out)
+    out = self.cat_fc2(out)
+    return out
+
+  def song_to_embedding(self, et, cf,cover,ind_numeric):
+    # spec to embedding
+    out_cat=torch.tensor(np.array([],dtype=np.float32)).cuda()
+    if self.indicador[0]:
+      out_tag = self.word_to_embedding(et)
+      out_cat=torch.cat([out_cat,out_tag],-1)
+    # cf to embedding
+    if self.indicador[1]:
+      out_cf = self.cf_to_embedding(cf)
+      out_cat=torch.cat([out_cat,out_cf],-1)
+    if self.indicador[2]:
+      out_cover = self.cover_to_embedding(cover)
+      out_cat=torch.cat([out_cat,out_cover],-1)
+    if self.indicador[3]:
+      out_numeric = self.numeric_to_embedding(ind_numeric)
+      out_cat=torch.cat([out_cat,out_numeric],-1)
+    
+
+    # fully connected
+    out = self.cat_to_embedding(out_cat)
+    return out
+
+  
+  def forward(self,  anchor,et, cf, cover, ind_numeric):
+    anchor_emb = self.anchor_to_embedding(anchor)
+    song_emb = self.song_to_embedding(et, cf,cover,ind_numeric)
+    return anchor_emb, song_emb
