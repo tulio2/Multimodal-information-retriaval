@@ -18,10 +18,10 @@ import re
 import essentia
 from essentia.standard import *
 
-def lastfm_get(payload):
+def lastfm_get(payload,api_key,api_secret_key):
     #You have to use your own lastfm's api_key
-    api_key='xxxxx'
-    #api_secret_key='xxxxxx'
+    
+    api_secret_key=api_secret_key
     user_agent='Dataquest'
     # define headers and URL
     headers = {'user-agent': user_agent}
@@ -29,7 +29,6 @@ def lastfm_get(payload):
     # Add API key and format to the payload
     payload['api_key'] = api_key
     payload['format'] = 'json'
-    payload['user']='tulio_93'
 
     response = requests.get(url, headers=headers, params=payload)
     return response
