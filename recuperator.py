@@ -25,7 +25,7 @@ class recuperador():
     self.raw_tracks=pd.read_csv(ruta+'/raw_tracks.csv',index_col=0)
     
     self.model=GlobalModel()
-    S = torch.load(ruta+'/Modelos/last_1111.ckpt')['state_dict']
+    S = torch.load(ruta+'/Modelos/last_1111.ckpt',map_location='cpu')['state_dict']
     SS = {key[6:]: S[key] for key in S.keys()}
     self.model.load_state_dict(SS)
     self.model.eval()
